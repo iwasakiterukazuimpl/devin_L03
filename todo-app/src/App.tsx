@@ -1,17 +1,60 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import './App.css'
 
-function App() {
-  const [tasks, setTasks] = useState<string[]>([])
-  const [inputValue, setInputValue] = useState('')
+interface Todo {
+  id: number
+  text: string
+  createdAt: string
+}
 
-  const addTask = () => {
+function App() {
+  const [tasks, setTasks] = useState<Todo[]>([])
+  const [inputValue, setInputValue] = useState('')
+  const [loading, setLoading] = useState(false)
+
+  const API_BASE_URL = 'http://localhost:3001'
+
+  useEffect(() => {
+    fetchTasks()
+  }, [])
+
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/todos`)
+      if (response.ok) {
+        const todos = await response.json()
+        setTasks(todos)
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error)
+    }
+  }
+
+  const addTask = async () => {
     if (inputValue.trim() !== '') {
-      setTasks([...tasks, inputValue.trim()])
-      setInputValue('')
+      setLoading(true)
+      try {
+        const response = await fetch(`${API_BASE_URL}/todos`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ text: inputValue.trim() }),
+        })
+        
+        if (response.ok) {
+          const newTodo = await response.json()
+          setTasks([...tasks, newTodo])
+          setInputValue('')
+        }
+      } catch (error) {
+        console.error('Error adding task:', error)
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -42,8 +85,8 @@ function App() {
                 onKeyPress={handleKeyPress}
                 className="flex-1"
               />
-              <Button onClick={addTask}>
-                追加
+              <Button onClick={addTask} disabled={loading}>
+                {loading ? '追加中...' : '追加'}
               </Button>
             </div>
           </CardContent>
@@ -60,12 +103,12 @@ function App() {
               </p>
             ) : (
               <ul className="space-y-2">
-                {tasks.map((task, index) => (
+                {tasks.map((task) => (
                   <li
-                    key={index}
+                    key={task.id}
                     className="p-3 bg-white border rounded-lg shadow-sm"
                   >
-                    {task}
+                    {task.text}
                   </li>
                 ))}
               </ul>
